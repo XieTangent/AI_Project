@@ -8,9 +8,9 @@ BOARD_SIZE = 8
 BACKGROUND_COLOR = "#006400"
 
 class ReversiGame:
-    def __init__(self):
+    def __init__(self, starting_player="X"):
         self.board = [["." for _ in range(BOARD_SIZE)] for _ in range(BOARD_SIZE)]
-        self.current_player = "X"
+        self.current_player = starting_player
         self.init_board()
 
     @staticmethod
@@ -73,14 +73,16 @@ class ReversiGame:
             return True
         return False
 
+
 class ReversiGUI:
-    def __init__(self, root: tk.Tk):
+    def __init__(self, root: tk.Tk, starting_player):
         self.root = root
         self.root.title("Reversi with Return Rule + AI")
-        self.game = ReversiGame()
 
-        self.vs_ai = tk.BooleanVar(value=True)
-        tk.Checkbutton(root, text="與 AI 對戰", variable=self.vs_ai).grid(row=0, column=1, sticky="w")
+        # Ask the player to choose the starting player (first or second)
+        self.starting_player = starting_player
+
+        self.game = ReversiGame(starting_player=self.starting_player)
 
         self.canvas = tk.Canvas(root, width=CELL_SIZE * BOARD_SIZE,
                                 height=CELL_SIZE * BOARD_SIZE,
@@ -201,10 +203,9 @@ class ReversiGUI:
         self.update_board()
         self.update_score()
         self.status.config(text=f"當前玩家: {self.game.current_player}")
-        if self.game.current_player == "O" and self.vs_ai.get():
+        if self.game.current_player == "O":
             self.root.after(500, self.ai_move)
 
-    # ========== AI 區塊 ==========
     def ai_move(self):
         moves = self.game.get_valid_moves("O")
         if not moves:
@@ -249,10 +250,49 @@ class ReversiGUI:
         self.status.config(text="遊戲已結束")
         self.canvas.unbind("<Button-1>")
 
+def ask_player_choice(root):
+    choice = tk.StringVar()
+
+    def select(symbol):
+        choice.set(symbol)
+        popup.destroy()
+
+    popup = tk.Toplevel(root)
+    popup.title("選擇先攻/後攻")
+    popup.resizable(False, False)
+
+    win_width = 250
+    win_height = 160
+    screen_width = popup.winfo_screenwidth()
+    screen_height = popup.winfo_screenheight()
+    x = int((screen_width / 2) - (win_width / 2))
+    y = int((screen_height / 2) - (win_height / 2))
+    popup.geometry(f"{win_width}x{win_height}+{x}+{y}")
+    popup.attributes("-topmost", True)
+
+    tk.Label(popup, text="請選擇你要扮演的角色：", pady=10).pack()
+    tk.Button(popup, text="我先攻 (X)", width=15, command=lambda: select('X')).pack(pady=5)
+    tk.Button(popup, text="我後攻 (O)", width=15, command=lambda: select('O')).pack(pady=5)
+
+    popup.grab_set()
+    popup.wait_window()
+
+    return choice.get()
+
+
 def main():
     root = tk.Tk()
-    app = ReversiGUI(root)
+    root.withdraw()  # 先隱藏主視窗
+
+    # 顯示選擇視窗
+    starting_player = ask_player_choice(root)
+    if not starting_player:
+        return  # 沒選擇就不啟動遊戲
+
+    root.deiconify()  # 顯示主視窗
+    app = ReversiGUI(root, starting_player)
     root.mainloop()
+
 
 if __name__ == "__main__":
     main()
